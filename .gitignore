@@ -1,6 +1,11 @@
 # Prerequisites
 *.d
 
+#MQL4
+*.dat
+*.ex4
+
+
 # Compiled Object files
 *.slo
 *.lo
