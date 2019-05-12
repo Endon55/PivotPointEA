@@ -1,4 +1,5 @@
 #include "PivotPoints.mqh"
+#include "TradeOperations.mqh"
 #property strict
 
 //Slowdown Speed for use on Visual mode speed 32. Higher the number the slower it will run.
@@ -22,7 +23,7 @@ double askBetweenBars = 1;
 int bidAskSpread = 1;
 int threeDayVolatility;
 
-int Magic = 1234;
+int MagicNumber = 1234;
 
 int StopLoss = 50;
 int TakeProfit = 50;
@@ -40,51 +41,33 @@ int maxTrades = 1;
 
 
 
+
 /-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 int OnInit()
-{
-   
-   ChartSetInteger(ChartID(), CHART_COLOR_BACKGROUND, clrBackground);
-   ChartSetInteger(ChartID(), CHART_COLOR_GRID, clrGrid);
-   ChartSetInteger(ChartID(), CHART_COLOR_CANDLE_BEAR, clrOrchid);
-   ChartSetInteger(ChartID(), CHART_COLOR_CANDLE_BULL, clrBullCandle);
-   ChartSetInteger(ChartID(), CHART_COLOR_CHART_UP, clrYellow);
-   ChartSetInteger(ChartID(), CHART_COLOR_CHART_DOWN, clrOrchid);
-   ChartSetInteger(ChartID(), CHART_MODE, CHART_CANDLES);
-   ChartSetInteger(ChartID(), CHART_FOREGROUND, true); 
-   ObjectCreate(ChartID(), "Above",  OBJ_HLINE, 0, 0, 0.0);
-   ObjectCreate(ChartID(), "Below",  OBJ_HLINE, 0, 0, 0.0);
+{ 
+   setChartFormatting();
    pPoints[indexPPoints + 1].Draw();
    indexPPoints++;
    sortPrices();
    return(INIT_SUCCEEDED);
 }
 
-int start()
-{
-   if(IsVisualMode() == true)
-   {
-      int Waitloop = 0;
-      while(Waitloop < speed)Waitloop++;
-   }
-   return(0);
-}
+
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
 void OnTick()
 {
    updateVars();
-   if(GetTotalOpenTrades() < maxTrades)
+   if(GetTotalOpenTrades(MagicNumber) < maxTrades)
    {
-      Print("Index: ", indexSortedArray);
       if(inBounds(indexSortedArray) && shouldGoLong(betweenPivotPointBars, askBetweenBars, sortedPricesArray[indexSortedArray + 1], 0.3)) //Price is above lower line go long
       {
-         tradeID = OrderSend(Symbol(), OP_BUY, calculatePositionSize(Ask), Ask, 10, Bid - StopLoss * Point, 0, "Buy Order", Magic, 0, clrGreen);
+         tradeID = OrderSend(Symbol(), OP_BUY, calculatePositionSize(Ask, percentMarginUsedPerTrade), Ask, 10, Bid - StopLoss * Point, 0, "Buy Order", MagicNumber, 0, clrGreen);
          setTakeProfitLong(betweenPivotPointBars, sortedPricesArray[indexSortedArray - 1], 0.3);
       }
       //else if() //Price is below upper line go short
    }
-   //else trailStopLoss();
+   else trailStopLoss(StopLoss, TakeProfit, tradeID);
    /*
    else if(inBounds(indexSortedArray) && shouldSellLong(betweenPivotPointBars, askBetweenBars, sortedPricesArray[indexSortedArray - 1], 0.3))
    {
@@ -92,8 +75,7 @@ void OnTick()
       OrderClose(tradeID, OrderLots(), Ask, 10, clrRed);
    }
    */
-   //start();
-   
+   //start(); 
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
 bool shouldGoLong(double spreadBetweenBars, double askSpreadBetweenbars, double lineValue, double closeToLinePercent)
@@ -115,7 +97,8 @@ bool shouldGoLong(double spreadBetweenBars, double askSpreadBetweenbars, double 
 void setTakeProfitLong(double spreadBetweenBars, double lineValue, double closeToLinePercent)
 {
    double closeToLinePercent2 = 1 - closeToLinePercent;
-   int profitTarget = (int)(closeToLinePercent2 * spreadBetweenBars * toPips);
+   int profitTarget = (int)(closeToLinePercent2 * spreadBetweenBars);
+   Print("PT: ", profitTarget, "----------------------------------------");
    OrderModify(tradeID, OrderOpenPrice(), 0, Bid + profitTarget * Point(), 0, clrGreen);
 }
 
@@ -134,61 +117,58 @@ bool shouldSellLong(double spreadBetweenBars, double askSpreadBetweenbars, doubl
    return false;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-int strength(double distanceBetweenPoints)
-{
-   if(iOpen(Symbol(), PERIOD_H1, 1) > iClose(Symbol(), PERIOD_H1, 0))
-   {
-      //Bid for going short
-   }
-   else if(iOpen(Symbol(), PERIOD_H1, 1) < iClose(Symbol(), PERIOD_H1, 1))
-   {
-      //Ask for going long
-   }
-   else return 0;
-   return 1;
-}
+
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-double getPipSpread(double highValue, double lowValue)
-{
-   return (highValue - lowValue) * toPips;
-}
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-int sentiment()
-{
-   if(iClose(Symbol(), PERIOD_H1, 1) > iOpen(Symbol(), PERIOD_H1, 1) && iClose(Symbol(), PERIOD_H1, 0) > iOpen(Symbol(), PERIOD_H1, 0))
-   {
-      return 1;
-   }
-   return 0;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void setChartFormatting()
+{
+   ChartSetInteger(ChartID(), CHART_COLOR_BACKGROUND, clrBackground);
+   ChartSetInteger(ChartID(), CHART_COLOR_GRID, clrGrid);
+   ChartSetInteger(ChartID(), CHART_COLOR_CANDLE_BEAR, clrOrchid);
+   ChartSetInteger(ChartID(), CHART_COLOR_CANDLE_BULL, clrBullCandle);
+   ChartSetInteger(ChartID(), CHART_COLOR_CHART_UP, clrYellow);
+   ChartSetInteger(ChartID(), CHART_COLOR_CHART_DOWN, clrOrchid);
+   ChartSetInteger(ChartID(), CHART_MODE, CHART_CANDLES);
+   ChartSetInteger(ChartID(), CHART_FOREGROUND, true); 
+   ObjectCreate(ChartID(), "Above",  OBJ_HLINE, 0, 0, 0.0);
+   ObjectCreate(ChartID(), "Below",  OBJ_HLINE, 0, 0, 0.0);
 }
+
+
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-//Calls the pivot point sort function and passes it an array to be filled with the pivot points sorted from highest to lowest with the current market price sorted in
 void sortPrices()
-{ 
-   
+{  
    pPoints[indexPPoints].GetArraySortedWithAsk(Ask, sortedPricesArray);
    indexSortedArray = (int)sortedPricesArray[8];
-}
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-//If trend strength is a 0, take a small bounce position, 5 strong bounce, 10 assume breakout
-int getTrendStrength()
-{
-   return 0;
-}
-
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-int getVolatility()
-{
-   int dayOne = (int)((iHigh(Symbol(), PERIOD_D1, 1) - iLow(Symbol(), PERIOD_D1, 1)) * toPips);
-   int dayTwo = (int)((iHigh(Symbol(), PERIOD_D1, 2) - iLow(Symbol(), PERIOD_D1, 2)) * toPips);
-   int dayThree = (int)((iHigh(Symbol(), PERIOD_D1, 3) - iLow(Symbol(), PERIOD_D1, 3)) * toPips);
-   
-   //Adding Weights to the days to try emphasize the last day but not too much 436
-   return (dayOne * 2  + dayTwo * 3 + dayThree * 5) / 11 ;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
 void updateVars()
@@ -201,65 +181,25 @@ void updateVars()
       }
       if(inBounds(indexSortedArray))
       { 
-         askBetweenBars = MathRound(getPipSpread(Ask, sortedPricesArray[indexSortedArray + 1]));
-         betweenPivotPointBars = MathRound(getPipSpread(sortedPricesArray[indexSortedArray - 1], sortedPricesArray[indexSortedArray + 1]));
+         askBetweenBars = MathRound(getPipSpread(Ask, sortedPricesArray[indexSortedArray + 1], toPips));
+         betweenPivotPointBars = MathRound(getPipSpread(sortedPricesArray[indexSortedArray - 1], sortedPricesArray[indexSortedArray + 1], toPips));
          ObjectMove("Above", 0, 0, sortedPricesArray[indexSortedArray - 1]);
          ObjectMove("Below", 0, 0, sortedPricesArray[indexSortedArray + 1]);
          
-         threeDayVolatility = getVolatility();
+         threeDayVolatility = getVolatility(toPips);
       }
  
       
    sortPrices();
    bidAskSpread = (int)MarketInfo(Symbol(), MODE_SPREAD);
 }
-
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-int GetTotalOpenTrades()
+int start()
 {
-   int TotalTrades = 0;
-   for(int i = 0; i < OrdersTotal(); i++)
+   if(IsVisualMode() == true)
    {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
-      {
-         if(OrderSymbol() != Symbol()) continue;
-         if(OrderMagicNumber() != Magic) continue;
-         if(OrderCloseTime() != 0) continue;
-         
-         TotalTrades = TotalTrades + 1;
-      }
+      int Waitloop = 0;
+      while(Waitloop < speed)Waitloop++;
    }
-   return TotalTrades;
+   return(0);
 }
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-double calculatePositionSize(double price)
-{
-      int unitsPerLot = 100000;
-      double smallestPosition = .01;
-      double leverage = 100 / AccountLeverage();
-      double cashToSpendThisTrade = AccountBalance() * percentMarginUsedPerTrade;
-      double lotCost = price * unitsPerLot * leverage;
-      double costPerMicro = (unitsPerLot * price / 100) * leverage / 100;
-      double positionSize = floor(cashToSpendThisTrade / costPerMicro);  
-      return positionSize / 100;
-}
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-bool inBounds(int valueToCheck)
-{
-   if(valueToCheck > 0 && valueToCheck < 8) return true;
-   return false;
-}
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-
-void trailStopLoss()
-{
-   if(OrderType() == OP_BUY && OrderStopLoss() < Bid - StopLoss * Point())
-   {
-      OrderModify(tradeID, OrderOpenPrice(), Bid - StopLoss * Point(), 0, 0, clrGreen);
-   }
-   if(OrderType() == OP_SELL && OrderStopLoss() > Bid + StopLoss * Point())
-   {
-      OrderModify(tradeID, OrderOpenPrice(), Bid + StopLoss * Point(), 0, 0, clrGreen);
-   }
-}
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//

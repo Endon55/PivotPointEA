@@ -61,7 +61,6 @@ PivotPoints::~PivotPoints()
 void PivotPoints::DrawLine(string Name, double Price, color Color)
 {
 
-   Print("Hello---------------------------------------------");
    ObjectCreate(ChartID(), Name, OBJ_RECTANGLE, 0, startingTime, Price, endingTime, Price + lineThickness * Point());
    ObjectSetInteger(ChartID(), Name, OBJPROP_WIDTH, lineThickness);
    ObjectSetInteger(ChartID(), Name, OBJPROP_COLOR, Color);
